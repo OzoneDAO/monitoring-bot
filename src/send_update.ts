@@ -341,12 +341,11 @@ async function fetchAndSendCurveUpdate(
     throw new Error(`Curve pools API error: ${poolsRes.status}`);
   }
 
-  const pool = (await poolRes.json()) as { data: CurvePoolData };
+  const poolData = (await poolRes.json()) as CurvePoolData;
   const poolsJson = (await poolsRes.json()) as {
     data: { poolData: CurvePoolsEntry[] };
   };
 
-  const poolData = pool.data;
   const gaugeData = poolsJson.data.poolData.find(
     (p) => p.address.toLowerCase() === CURVE_POOL_ADDRESS
   );
