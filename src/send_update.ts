@@ -158,18 +158,24 @@ function formatDepositDelta(delta: [number, number] | null): string {
 async function sendTelegramMessage(
   botToken: string,
   chatId: string,
-  text: string
+  text: string,
+  topicId?: number
 ): Promise<void> {
+  const payload: Record<string, unknown> = {
+    chat_id: chatId,
+    text,
+    parse_mode: "Markdown",
+  };
+  if (topicId !== undefined) {
+    payload.message_thread_id = topicId;
+  }
+
   const res = await fetch(
     `https://api.telegram.org/bot${botToken}/sendMessage`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        parse_mode: "Markdown",
-      }),
+      body: JSON.stringify(payload),
     }
   );
 
@@ -182,6 +188,9 @@ async function sendTelegramMessage(
 async function main() {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
+  const topicId = process.env.TELEGRAM_TOPIC_ID
+    ? Number(process.env.TELEGRAM_TOPIC_ID)
+    : undefined;
 
   if (!botToken || !chatId) {
     throw new Error("TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set");
@@ -276,7 +285,7 @@ async function main() {
 
 _${timestamp}_`;
 
-  await sendTelegramMessage(botToken, chatId, message);
+  await sendTelegramMessage(botToken, chatId, message, topicId);
   console.log(`Update sent: $${formatNumber(totalAssetsUsd)}`);
 }
 
