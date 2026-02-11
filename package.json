@@ -1,0 +1,11 @@
+{
+  "name": "morpho-monitoring-bot",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/send_update.ts"
+  },
+  "dependencies": {
+    "tsx": "^4.19.0"
+  }
+}
