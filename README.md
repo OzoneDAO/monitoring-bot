@@ -1,35 +1,31 @@
-# Morpho Vault Monitoring Bot
+# DeFi Monitoring Bot
 
-A Telegram bot that monitors the [sky.money USDS Risk Capital](https://app.morpho.org/ethereum/vault/0xf42bca228D9bd3e2F8EE65Fec3d21De1063882d4/skymoney-usds-risk-capital) vault on Morpho and sends hourly updates.
+A Telegram bot that monitors DeFi metrics across Morpho, Curve, and Uniswap pools, sending periodic updates to a Telegram group. Each monitor posts to its own topic thread. Deployed as a Railway cron job.
 
-## Features
+## Monitors
 
-- Reports total deposits in USDS
-- APY breakdown (Native + Rewards)
-- stUSDS/USDS market metrics (utilization, liquidity, borrow rate)
-- Runs hourly via GitHub Actions (free)
+### Morpho Vault + Curve Pool (`send_update.ts`)
 
-## Sample Message
+Tracks the [sky.money USDS Risk Capital](https://app.morpho.org/ethereum/vault/0xf42bca228D9bd3e2F8EE65Fec3d21De1063882d4) vault and its associated Curve pool.
 
-```
-Morpho Vault Monitor
+**Morpho vault metrics:** total deposits, 1h/12h/24h deposit changes, APY breakdown (native + rewards), average APY trends, stUSDS/USDS market utilization, liquidity, and borrow rates.
 
-sky.money USDS Risk Capital
+**Curve pool metrics:** TVL, pool balances, virtual price, 24h volume & fees, fee APR, CRV APY, gauge rewards.
 
-Total Deposits: 3,987,844.23 USDS
+### USDS Peg Monitor (`send_usds_peg_update.ts`)
 
-APY Breakdown:
-  Native APY: 5.41%
-  Rewards APY: 10.00%
-  Total APY: 15.41%
+Tracks USDS price stability across 4 DEX pools:
 
-stUSDS/USDS Market:
-  Utilization: 100.00%
-  Liquidity: 0.00 USDS
-  Borrow Rate: 6.30%
+| Pool | Type |
+|------|------|
+| Curve PYUSD/USDS | Curve |
+| USDC/USDS 0.01% | Uniswap V4 |
+| USDT/USDS 0.01% | Uniswap V4 |
+| DAI/USDS 0.3% | Uniswap V3 |
 
-2026-01-23 11:00 UTC
-```
+**Metrics per pool:** USDS price, deviation from $1.00 (basis points), TVL, 24h volume, pool composition (Curve only).
+
+**Aggregate:** volume-weighted average price (VWAP), total TVL.
 
 ## Setup
 
@@ -39,46 +35,64 @@ stUSDS/USDS Market:
 2. Send `/newbot` and follow the prompts
 3. Save the bot token
 
-### 2. Get Your Chat ID
+### 2. Get Your Chat ID and Topic IDs
 
-1. Message your new bot (send `/start`)
-2. Run the helper script:
-   ```bash
-   pip install -r requirements.txt
-   TELEGRAM_BOT_TOKEN=your_token python get_chat_id.py
-   ```
+- **Chat ID:** Add the bot to your group, then use the Telegram API to get the chat ID (supergroups are prefixed with `-100`)
+- **Topic IDs:** From any message URL in a topic (`https://t.me/c/{chat_id}/{topic_id}/{message_id}`), the second number is the topic/thread ID
 
-### 3. Deploy to GitHub Actions
-
-1. Fork/push this repo to GitHub
-2. Go to Settings → Secrets and variables → Actions
-3. Add secrets:
-   - `TELEGRAM_BOT_TOKEN` - Your bot token
-   - `TELEGRAM_CHAT_ID` - Your chat ID
-4. The bot will run automatically every hour
-
-### Local Testing
+### 3. Configure Environment
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Create .env file
 cp .env.example .env
-# Edit .env with your credentials
-
-# Run single update
-source .env && export TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID && python send_update.py
-
-# Or run continuous bot
-python bot.py
 ```
+
+Fill in `.env`:
+
+```
+TELEGRAM_BOT_TOKEN=<your bot token>
+TELEGRAM_CHAT_ID=<your chat id>
+TELEGRAM_TOPIC_ID_MORPHO=<topic id>
+TELEGRAM_TOPIC_ID_CURVE=<topic id>
+TELEGRAM_TOPIC_ID_USDS_PEG=<topic id>
+```
+
+### 4. Local Testing
+
+```bash
+npm install
+
+# Morpho + Curve update
+source .env && export TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID TELEGRAM_TOPIC_ID_MORPHO TELEGRAM_TOPIC_ID_CURVE && npx tsx src/send_update.ts
+
+# USDS peg update
+source .env && export TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID TELEGRAM_TOPIC_ID_USDS_PEG && npx tsx src/send_usds_peg_update.ts
+```
+
+## Deployment
+
+Deployed on [Railway](https://railway.app) as a cron job.
+
+- **Config:** `railway.toml`
+- **Schedule:** `0 */6 * * *` (every 6 hours)
+- **Start command:** `npm start` → `tsx src/send_update.ts`
+
+Environment variables are configured in the Railway service settings.
 
 ## Data Sources
 
-- **Morpho GraphQL API:** https://blue-api.morpho.org/graphql
-- **Vault:** [sky.money USDS Risk Capital](https://app.morpho.org/ethereum/vault/0xf42bca228D9bd3e2F8EE65Fec3d21De1063882d4)
-- **Market:** [stUSDS/USDS](https://app.morpho.org/ethereum/market/0x77e624dd9dd980810c2b804249e88f3598d9c7ec91f16aa5fbf6e3fdf6087f82)
+| API | Used By | What It Provides |
+|-----|---------|-----------------|
+| [Morpho Blue GraphQL](https://blue-api.morpho.org/graphql) | Vault monitor | Vault deposits, APY, market state, historical timeseries |
+| [Curve Prices API](https://prices.curve.finance) | Vault monitor, Peg monitor | Pool balances, TVL, virtual price |
+| [Curve Pools API](https://api.curve.finance) | Vault monitor | Gauge rewards, CRV APY |
+| [GeckoTerminal API](https://api.geckoterminal.com) | Peg monitor | Trade-derived token prices, TVL, 24h volume |
+
+## Tech Stack
+
+- **Runtime:** Node.js with native `fetch`
+- **Language:** TypeScript (ES2022, strict)
+- **Runner:** [tsx](https://github.com/privatenumber/tsx) (zero-config TS execution)
+- **Dependencies:** `tsx` only — no other external packages
 
 ## License
 
