@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "tsx src/send_update.ts"
+    "start": "tsx src/send_update.ts && tsx src/send_usds_peg_update.ts"
   },
   "dependencies": {
     "tsx": "^4.19.0"
