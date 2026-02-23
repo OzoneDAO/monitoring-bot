@@ -4,13 +4,25 @@ A Telegram bot that monitors DeFi metrics across Morpho, Curve, and Uniswap pool
 
 ## Monitors
 
-### Morpho Vault + Curve Pool (`send_update.ts`)
+### Morpho USDS Vault + Curve Pool (`send_update.ts`)
 
 Tracks the [sky.money USDS Risk Capital](https://app.morpho.org/ethereum/vault/0xf42bca228D9bd3e2F8EE65Fec3d21De1063882d4) vault and its associated Curve pool.
 
 **Morpho vault metrics:** total deposits, 1h/12h/24h deposit changes, APY breakdown (native + rewards), average APY trends, stUSDS/USDS market utilization, liquidity, and borrow rates.
 
 **Curve pool metrics:** TVL, pool balances, virtual price, 24h volume & fees, fee APR, CRV APY, gauge rewards.
+
+### Morpho USDT Vault (`send_usdt_update.ts`)
+
+Tracks the [sky.money USDT Risk Capital](https://app.morpho.org/ethereum/vault/0x2bD3A43863c07B6A01581FADa0E1614ca5DF0E3d) vault.
+
+**Metrics:** total deposits, 1h/12h/24h deposit changes, APY breakdown (native + rewards), average APY trends, Morpho market utilization, liquidity, and borrow rates.
+
+### Morpho USDC Vault (`send_usdc_update.ts`)
+
+Tracks the [sky.money USDC Risk Capital](https://app.morpho.org/ethereum/vault/0x56bfa6f53669B836D1E0Dfa5e99706b12c373ecf) vault.
+
+**Metrics:** total deposits, 1h/12h/24h deposit changes, APY breakdown (native + rewards), average APY trends, Morpho market utilization, liquidity, and borrow rates.
 
 ### USDS Peg Monitor (`send_usds_peg_update.ts`)
 
@@ -51,7 +63,9 @@ Fill in `.env`:
 ```
 TELEGRAM_BOT_TOKEN=<your bot token>
 TELEGRAM_CHAT_ID=<your chat id>
-TELEGRAM_TOPIC_ID_MORPHO=<topic id>
+TELEGRAM_TOPIC_ID_MORPHO_USDS=<topic id>
+TELEGRAM_TOPIC_ID_MORPHO_USDT=<topic id>
+TELEGRAM_TOPIC_ID_MORPHO_USDC=<topic id>
 TELEGRAM_TOPIC_ID_CURVE=<topic id>
 TELEGRAM_TOPIC_ID_USDS_PEG=<topic id>
 ```
@@ -61,8 +75,14 @@ TELEGRAM_TOPIC_ID_USDS_PEG=<topic id>
 ```bash
 npm install
 
-# Morpho + Curve update
-source .env && export TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID TELEGRAM_TOPIC_ID_MORPHO TELEGRAM_TOPIC_ID_CURVE && npx tsx src/send_update.ts
+# Morpho USDS + Curve update
+source .env && export TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID TELEGRAM_TOPIC_ID_MORPHO_USDS TELEGRAM_TOPIC_ID_CURVE && npx tsx src/send_update.ts
+
+# Morpho USDT update
+source .env && export TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID TELEGRAM_TOPIC_ID_MORPHO_USDT && npx tsx src/send_usdt_update.ts
+
+# Morpho USDC update
+source .env && export TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID TELEGRAM_TOPIC_ID_MORPHO_USDC && npx tsx src/send_usdc_update.ts
 
 # USDS peg update
 source .env && export TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID TELEGRAM_TOPIC_ID_USDS_PEG && npx tsx src/send_usds_peg_update.ts

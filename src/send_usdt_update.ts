@@ -1,22 +1,18 @@
 /**
- * Single-shot script to fetch Morpho vault + Curve pool data and send Telegram updates.
- * Designed for use with Railway cron jobs.
+ * Single-shot script to fetch Morpho vault data for sky.money USDT Risk Capital
+ * and send Telegram update. Designed for use with Railway cron jobs.
  */
 
 // --- Constants ---
 
-const VAULT_ADDRESS = "0xf42bca228D9bd3e2F8EE65Fec3d21De1063882d4";
+const VAULT_ADDRESS = "0x2bD3A43863c07B6A01581FADa0E1614ca5DF0E3d";
 const MARKET_ID =
-  "0x77e624dd9dd980810c2b804249e88f3598d9c7ec91f16aa5fbf6e3fdf6087f82";
+  "0x710f02caee4555b8ff75b7d48e5b52adc48898dc0c670b977fb1ea83bf4e7d8a";
 const MORPHO_API_URL = "https://blue-api.morpho.org/graphql";
+const TOKEN_SYMBOL = "USDT";
+const TOKEN_DECIMALS = 6;
 
-const CURVE_POOL_ADDRESS =
-  "0x2c7c98a3b1582d83c43987202aeff638312478ae";
-const CURVE_POOL_API_URL = `https://prices.curve.finance/v1/pools/ethereum/${CURVE_POOL_ADDRESS}`;
-const CURVE_POOLS_API_URL =
-  "https://api.curve.finance/v1/getPools/ethereum/factory-stable-ng";
-
-// --- Morpho types ---
+// --- Types ---
 
 interface TimeseriesPoint {
   x: number;
@@ -54,32 +50,7 @@ interface MarketData {
   };
 }
 
-// --- Curve types ---
-
-interface CurvePoolData {
-  name: string;
-  tvl_usd: number;
-  balances: number[];
-  trading_volume_24h: number;
-  trading_fee_24h: number;
-  base_daily_apr: number;
-  base_weekly_apr: number;
-  virtual_price: number;
-  coins: { symbol: string; decimals: number }[];
-}
-
-interface CurveGaugeReward {
-  symbol: string;
-  apy: number;
-}
-
-interface CurvePoolsEntry {
-  address: string;
-  gaugeCrvApy: [number, number];
-  gaugeRewards: CurveGaugeReward[];
-}
-
-// --- Shared helpers ---
+// --- Helpers ---
 
 function formatNumber(value: number): string {
   return value.toLocaleString("en-US", {
@@ -90,10 +61,6 @@ function formatNumber(value: number): string {
 
 function formatPct(value: number): string {
   return `${(value * 100).toFixed(2)}%`;
-}
-
-function formatPctRaw(value: number): string {
-  return `${value.toFixed(2)}%`;
 }
 
 function formatDelta(value: number): string {
@@ -109,7 +76,7 @@ function formatDeltaPct(value: number): string {
 function formatDepositDelta(delta: [number, number] | null): string {
   if (delta === null) return "N/A";
   const [absD, pctD] = delta;
-  return `${formatDeltaPct(pctD)} (${formatDelta(absD)} USDS)`;
+  return `${formatDeltaPct(pctD)} (${formatDelta(absD)} ${TOKEN_SYMBOL})`;
 }
 
 function getTimeseriesValues(
@@ -225,11 +192,17 @@ function buildMorphoQuery(): string {
   `;
 }
 
-async function fetchAndSendMorphoUpdate(
-  botToken: string,
-  chatId: string,
-  topicId?: number
-): Promise<void> {
+async function main() {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  const topicId = process.env.TELEGRAM_TOPIC_ID_MORPHO_USDT
+    ? Number(process.env.TELEGRAM_TOPIC_ID_MORPHO_USDT)
+    : undefined;
+
+  if (!botToken || !chatId) {
+    throw new Error("TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set");
+  }
+
   const res = await fetch(MORPHO_API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -253,7 +226,7 @@ async function fetchAndSendMorphoUpdate(
 
   const totalAssetsUsd = Number(vault.totalAssetsUsd);
   const totalAssetsRaw =
-    Number((BigInt(vault.totalAssets) * 10000n) / BigInt(10 ** 18)) / 10000;
+    Number((BigInt(vault.totalAssets) * 10000n) / BigInt(10 ** TOKEN_DECIMALS)) / 10000;
   const nativeApy = Number(vault.avgApy);
   const netApy = Number(vault.avgNetApy);
   const rewardsApy = vault.rewards.reduce(
@@ -264,13 +237,13 @@ async function fetchAndSendMorphoUpdate(
   const { state } = market;
   const utilization = Number(state.utilization);
   const liquidityAssets =
-    Number((BigInt(state.liquidityAssets) * 10000n) / BigInt(10 ** 18)) / 10000;
+    Number((BigInt(state.liquidityAssets) * 10000n) / BigInt(10 ** TOKEN_DECIMALS)) / 10000;
   const borrowApy = Number(state.avgBorrowApy);
 
   const vaultHist = vault.historicalState;
-  const delta1h = computeDelta(totalAssetsRaw, vaultHist.totalAssets_1h, 18);
-  const delta12h = computeDelta(totalAssetsRaw, vaultHist.totalAssets_12h, 18);
-  const delta24h = computeDelta(totalAssetsRaw, vaultHist.totalAssets_24h, 18);
+  const delta1h = computeDelta(totalAssetsRaw, vaultHist.totalAssets_1h, TOKEN_DECIMALS);
+  const delta12h = computeDelta(totalAssetsRaw, vaultHist.totalAssets_12h, TOKEN_DECIMALS);
+  const delta24h = computeDelta(totalAssetsRaw, vaultHist.totalAssets_24h, TOKEN_DECIMALS);
 
   const avgApy1h = computeAverage(vaultHist.avgNetApy_1h);
   const avgApy12h = computeAverage(vaultHist.avgNetApy_12h);
@@ -288,7 +261,7 @@ async function fetchAndSendMorphoUpdate(
 
 *${vault.name}*
 
-*Total Deposits:* ${formatNumber(totalAssetsRaw)} USDS
+*Total Deposits:* ${formatNumber(totalAssetsRaw)} ${TOKEN_SYMBOL}
 
 *Deposit Changes:*
   1h:  ${formatDepositDelta(delta1h)}
@@ -305,9 +278,9 @@ async function fetchAndSendMorphoUpdate(
   12h: ${avgApy12h !== null ? formatPct(avgApy12h) : "N/A"}
   24h: ${avgApy24h !== null ? formatPct(avgApy24h) : "N/A"}
 
-*stUSDS/USDS Market:*
+*Morpho Market:*
   Utilization: ${formatPct(utilization)}
-  Liquidity: ${formatNumber(liquidityAssets)} USDS
+  Liquidity: ${formatNumber(liquidityAssets)} ${TOKEN_SYMBOL}
   Borrow Rate: ${formatPct(borrowApy)}
 
 *Avg Borrow Rate:*
@@ -318,132 +291,7 @@ async function fetchAndSendMorphoUpdate(
 _${timestamp}_`;
 
   await sendTelegramMessage(botToken, chatId, message, topicId);
-  console.log(`[Morpho] Update sent: $${formatNumber(totalAssetsUsd)}`);
-}
-
-// --- Curve update ---
-
-async function fetchAndSendCurveUpdate(
-  botToken: string,
-  chatId: string,
-  topicId?: number
-): Promise<void> {
-  // Fetch pool data and gauge rewards in parallel
-  const [poolRes, poolsRes] = await Promise.all([
-    fetch(CURVE_POOL_API_URL),
-    fetch(CURVE_POOLS_API_URL),
-  ]);
-
-  if (!poolRes.ok) {
-    throw new Error(`Curve pool API error: ${poolRes.status}`);
-  }
-  if (!poolsRes.ok) {
-    throw new Error(`Curve pools API error: ${poolsRes.status}`);
-  }
-
-  const poolData = (await poolRes.json()) as CurvePoolData;
-  const poolsJson = (await poolsRes.json()) as {
-    data: { poolData: CurvePoolsEntry[] };
-  };
-
-  const gaugeData = poolsJson.data.poolData.find(
-    (p) => p.address.toLowerCase() === CURVE_POOL_ADDRESS
-  );
-
-  // Pool metrics
-  const tvl = poolData.tvl_usd;
-  const [balance0, balance1] = poolData.balances;
-  const totalBalance = balance0 + balance1;
-  const ratio0 = balance0 / totalBalance;
-  const ratio1 = balance1 / totalBalance;
-  const virtualPrice = poolData.virtual_price / 1e18;
-  const volume24h = poolData.trading_volume_24h;
-  const fees24h = poolData.trading_fee_24h;
-  const feeAprDaily = poolData.base_daily_apr;
-  const feeAprWeekly = poolData.base_weekly_apr;
-
-  // Gauge metrics
-  const crvApy = gaugeData ? gaugeData.gaugeCrvApy : [0, 0];
-  const extraRewards = gaugeData?.gaugeRewards ?? [];
-  const totalExtraApy = extraRewards.reduce((sum, r) => sum + r.apy, 0);
-  const totalApy = feeAprDaily + crvApy[1] + totalExtraApy;
-
-  const coin0 = poolData.coins[0]?.symbol ?? "Token0";
-  const coin1 = poolData.coins[1]?.symbol ?? "Token1";
-
-  const timestamp =
-    new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC";
-
-  let rewardsSection = "";
-  if (extraRewards.length > 0) {
-    const rewardLines = extraRewards
-      .map((r) => `  ${r.symbol}: ${formatPctRaw(r.apy)}`)
-      .join("\n");
-    rewardsSection = `\n*Gauge Rewards:*\n${rewardLines}`;
-  }
-
-  const message = `*Curve Pool Monitor*
-
-*${poolData.name}*
-
-*TVL:* $${formatNumber(tvl)}
-
-*Pool Balances:*
-  ${coin0}: ${formatNumber(balance0)} (${formatPctRaw(ratio0 * 100)})
-  ${coin1}: ${formatNumber(balance1)} (${formatPctRaw(ratio1 * 100)})
-
-*Virtual Price:* ${virtualPrice.toFixed(6)}
-
-*24h Activity:*
-  Volume: $${formatNumber(volume24h)}
-  Fees: $${formatNumber(fees24h)}
-
-*Fee APR:*
-  Daily: ${formatPctRaw(feeAprDaily)}
-  Weekly: ${formatPctRaw(feeAprWeekly)}
-
-*CRV APY:* ${crvApy[1] > 0 ? `${formatPctRaw(crvApy[0])} - ${formatPctRaw(crvApy[1])}` : "None"}
-${rewardsSection}
-*Total APY:* ${formatPctRaw(totalApy)}
-
-_${timestamp}_`;
-
-  await sendTelegramMessage(botToken, chatId, message, topicId);
-  console.log(`[Curve] Update sent: TVL $${formatNumber(tvl)}`);
-}
-
-// --- Main ---
-
-async function main() {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
-  const morphoTopicId = process.env.TELEGRAM_TOPIC_ID_MORPHO_USDS
-    ? Number(process.env.TELEGRAM_TOPIC_ID_MORPHO_USDS)
-    : undefined;
-  const curveTopicId = process.env.TELEGRAM_TOPIC_ID_CURVE
-    ? Number(process.env.TELEGRAM_TOPIC_ID_CURVE)
-    : undefined;
-
-  if (!botToken || !chatId) {
-    throw new Error("TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set");
-  }
-
-  const results = await Promise.allSettled([
-    fetchAndSendMorphoUpdate(botToken, chatId, morphoTopicId),
-    fetchAndSendCurveUpdate(botToken, chatId, curveTopicId),
-  ]);
-
-  const errors: Error[] = [];
-  for (const result of results) {
-    if (result.status === "rejected") {
-      console.error(result.reason);
-      errors.push(result.reason as Error);
-    }
-  }
-
-  if (errors.length === results.length) {
-    throw new Error("All updates failed");
-  }
+  console.log(`[Morpho USDT] Update sent: $${formatNumber(totalAssetsUsd)}`);
 }
 
 main()
