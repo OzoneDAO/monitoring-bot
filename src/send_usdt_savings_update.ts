@@ -1,15 +1,15 @@
 /**
- * Single-shot script to fetch Morpho vault data for sky.money USDC Risk Capital
+ * Single-shot script to fetch Morpho vault data for sky.money USDT Savings
  * and send Telegram update. Designed for use with Railway cron jobs.
  */
 
 // --- Constants ---
 
-const VAULT_ADDRESS = "0x56bfa6f53669B836D1E0Dfa5e99706b12c373ecf";
+const VAULT_ADDRESS = "0x23f5E9c35820f4baB695Ac1F19c203cC3f8e1e11";
 const MARKET_ID =
-  "0xd570c19c0dc0fbe4ab7faf4a37c4150e1c141c8aada8ca3e1b4b6c1b712af93d";
+  "0x3274643db77a064abd3bc851de77556a4ad2e2f502f4f0c80845fa8f909ecf0b";
 const MORPHO_API_URL = "https://blue-api.morpho.org/graphql";
-const TOKEN_SYMBOL = "USDC";
+const TOKEN_SYMBOL = "USDT";
 const TOKEN_DECIMALS = 6;
 
 // --- Types ---
@@ -195,8 +195,8 @@ function buildMorphoQuery(): string {
 async function main() {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
-  const topicId = process.env.TELEGRAM_TOPIC_ID_MORPHO_USDC_RISK_CAPITAL
-    ? Number(process.env.TELEGRAM_TOPIC_ID_MORPHO_USDC_RISK_CAPITAL)
+  const topicId = process.env.TELEGRAM_TOPIC_ID_MORPHO_USDT_SAVINGS
+    ? Number(process.env.TELEGRAM_TOPIC_ID_MORPHO_USDT_SAVINGS)
     : undefined;
 
   if (!botToken || !chatId) {
@@ -291,7 +291,7 @@ async function main() {
 _${timestamp}_`;
 
   await sendTelegramMessage(botToken, chatId, message, topicId);
-  console.log(`[Morpho USDC] Update sent: $${formatNumber(totalAssetsUsd)}`);
+  console.log(`[Morpho USDT Savings] Update sent: $${formatNumber(totalAssetsUsd)}`);
 }
 
 main()

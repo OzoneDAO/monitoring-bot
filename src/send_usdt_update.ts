@@ -195,8 +195,8 @@ function buildMorphoQuery(): string {
 async function main() {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
-  const topicId = process.env.TELEGRAM_TOPIC_ID_MORPHO_USDT
-    ? Number(process.env.TELEGRAM_TOPIC_ID_MORPHO_USDT)
+  const topicId = process.env.TELEGRAM_TOPIC_ID_MORPHO_USDT_RISK_CAPITAL
+    ? Number(process.env.TELEGRAM_TOPIC_ID_MORPHO_USDT_RISK_CAPITAL)
     : undefined;
 
   if (!botToken || !chatId) {

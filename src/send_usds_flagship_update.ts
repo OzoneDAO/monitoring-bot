@@ -1,16 +1,16 @@
 /**
- * Single-shot script to fetch Morpho vault data for sky.money USDC Risk Capital
+ * Single-shot script to fetch Morpho vault data for sky.money USDS Flagship
  * and send Telegram update. Designed for use with Railway cron jobs.
  */
 
 // --- Constants ---
 
-const VAULT_ADDRESS = "0x56bfa6f53669B836D1E0Dfa5e99706b12c373ecf";
+const VAULT_ADDRESS = "0xE15fcC81118895b67b6647BBd393182dF44E11E0";
 const MARKET_ID =
-  "0xd570c19c0dc0fbe4ab7faf4a37c4150e1c141c8aada8ca3e1b4b6c1b712af93d";
+  "0x77e624dd9dd980810c2b804249e88f3598d9c7ec91f16aa5fbf6e3fdf6087f82";
 const MORPHO_API_URL = "https://blue-api.morpho.org/graphql";
-const TOKEN_SYMBOL = "USDC";
-const TOKEN_DECIMALS = 6;
+const TOKEN_SYMBOL = "USDS";
+const TOKEN_DECIMALS = 18;
 
 // --- Types ---
 
@@ -195,8 +195,8 @@ function buildMorphoQuery(): string {
 async function main() {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
-  const topicId = process.env.TELEGRAM_TOPIC_ID_MORPHO_USDC_RISK_CAPITAL
-    ? Number(process.env.TELEGRAM_TOPIC_ID_MORPHO_USDC_RISK_CAPITAL)
+  const topicId = process.env.TELEGRAM_TOPIC_ID_MORPHO_USDS_FLAGSHIP
+    ? Number(process.env.TELEGRAM_TOPIC_ID_MORPHO_USDS_FLAGSHIP)
     : undefined;
 
   if (!botToken || !chatId) {
@@ -291,7 +291,7 @@ async function main() {
 _${timestamp}_`;
 
   await sendTelegramMessage(botToken, chatId, message, topicId);
-  console.log(`[Morpho USDC] Update sent: $${formatNumber(totalAssetsUsd)}`);
+  console.log(`[Morpho USDS Flagship] Update sent: $${formatNumber(totalAssetsUsd)}`);
 }
 
 main()
