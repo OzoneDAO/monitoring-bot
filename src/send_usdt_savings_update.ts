@@ -203,17 +203,22 @@ async function main() {
     throw new Error("TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set");
   }
 
-  const res = await fetch(MORPHO_API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query: buildMorphoQuery() }),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Morpho API error: ${res.status}`);
+  let res: Response | undefined;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    res = await fetch(MORPHO_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: buildMorphoQuery() }),
+    });
+    if (res.ok || res.status < 500) break;
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
   }
 
-  const json = (await res.json()) as {
+  if (!res!.ok) {
+    throw new Error(`Morpho API error: ${res!.status}`);
+  }
+
+  const json = (await res!.json()) as {
     data: { vault: VaultData; market: MarketData };
     errors?: unknown[];
   };
